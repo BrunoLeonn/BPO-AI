@@ -15,23 +15,41 @@ export interface Transaction {
   costCenter: string;
   bankName: string;
   status: 'pending' | 'reconciled';
+  confidence?: number; // Percentual de precisão da IA
+}
+
+export interface BankAccount {
+  id: string;
+  bankName: string;
+  companyName: string;
+  agency?: string;
+  accountNumber?: string;
+  currentBalance: number;
+  lastUpdated: string;
 }
 
 export interface CompanyProfile {
   name: string;
+  tradingName?: string;
+  cnpj: string;
   industry: string;
+  cnae?: string;
+  address?: string;
+  openingDate?: string;
   fiscalYear: string;
   customChartOfAccounts?: string[];
 }
 
-export interface FinancialSummary {
-  totalRevenue: number;
-  totalExpenses: number;
-  netProfit: number;
-  cashBalance: number;
+export interface CRMClient extends CompanyProfile {
+  id: string;
+  onboardingDate: string;
+  healthScore?: number;
 }
 
-export interface ReportData {
-  name: string;
-  value: number;
+export interface AIAdvice {
+  healthScore: number;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
 }

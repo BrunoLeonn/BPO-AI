@@ -10,7 +10,8 @@ interface DashboardProps {
   transactions: Transaction[];
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+// Cores FlowFin (Azul Primário, Verde Primário e variações complementares)
+const COLORS = ['#2563EB', '#10B981', '#3b82f6', '#059669', '#60a5fa', '#34d399'];
 
 export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
   const summary = transactions.reduce((acc, t) => {
@@ -21,7 +22,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
 
   const profit = summary.revenue - summary.expenses;
 
-  // Prepare Pie Chart data (Spending by Category)
   const categoryData = transactions
     .filter(t => t.type === TransactionType.EXPENSE)
     .reduce((acc: any[], t) => {
@@ -31,7 +31,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
       return acc;
     }, []);
 
-  // Prepare Line Chart data (Monthly Flow)
   const timelineData = transactions.reduce((acc: any[], t) => {
     const month = t.date.substring(0, 7);
     const existing = acc.find(i => i.month === month);
@@ -49,69 +48,70 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
   }, []).sort((a, b) => a.month.localeCompare(b.month));
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <p className="text-sm font-medium text-slate-500 uppercase">Receita Total</p>
-          <p className="text-3xl font-bold text-slate-900 mt-1">
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Fluxo de Entrada</p>
+          <p className="text-4xl font-black text-slate-900 tracking-tighter">
             {summary.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <p className="text-sm font-medium text-slate-500 uppercase">Despesa Total</p>
-          <p className="text-3xl font-bold text-red-600 mt-1">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Saídas Registradas</p>
+          <p className="text-4xl font-black text-blue-600 tracking-tighter">
             {summary.expenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <p className="text-sm font-medium text-slate-500 uppercase">Resultado (Lucro/Prejuízo)</p>
-          {/* Fix: Added missing className attribute to resolve JSX parsing error */}
-          <p className={`text-3xl font-bold mt-1 ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 bg-gradient-to-br from-white to-emerald-50">
+          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Saldo Líquido Flow</p>
+          <p className={`text-4xl font-black tracking-tighter ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-semibold mb-6">Fluxo de Caixa Mensal</h3>
-          <div className="h-80">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+          <h3 className="text-xl font-black mb-8 text-slate-900 uppercase tracking-widest text-[12px]">Performance Mensal Flow</h3>
+          <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={timelineData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" />
-                <YAxis />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
                 <Tooltip 
+                   contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontWeight: 'bold' }}
                    formatter={(value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 />
-                <Legend />
-                <Bar dataKey="inflow" name="Entradas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="outflow" name="Saídas" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }} />
+                <Bar dataKey="inflow" name="Entradas" fill="#2563EB" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="outflow" name="Saídas" fill="#10B981" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-semibold mb-6">Distribuição de Gastos</h3>
-          <div className="h-80">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+          <h3 className="text-xl font-black mb-8 text-slate-900 uppercase tracking-widest text-[12px]">Mix de Categorias</h3>
+          <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={categoryData}
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                  outerRadius={100}
-                  fill="#8884d8"
+                  innerRadius={70}
+                  outerRadius={120}
+                  paddingAngle={8}
                   dataKey="value"
+                  label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
                 >
                   {categoryData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
+                <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
