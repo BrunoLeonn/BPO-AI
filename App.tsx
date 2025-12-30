@@ -83,7 +83,7 @@ const App: React.FC = () => {
           
         } catch (err: any) {
           console.error(err);
-          setErrorToast(err.message?.includes('quota') ? 'Limite atingido. Tente novamente em breve.' : 'Erro ao processar CNPJ.');
+          setErrorToast('Erro ao processar CNPJ.');
         } finally {
           setIsProcessingCNPJ(false);
         }
@@ -95,7 +95,8 @@ const App: React.FC = () => {
     if (e.target.files && e.target.files.length > 0) {
       setIsProcessingStatements(true);
       setErrorToast(null);
-      const newFiles = Array.from(e.target.files);
+      // Fix: Explicitly type newFiles as File[] to resolve 'unknown' property access errors
+      const newFiles: File[] = Array.from(e.target.files);
       
       const initialFiles: FileStatus[] = newFiles.map(f => ({ 
         name: f.name, 
@@ -138,9 +139,7 @@ const App: React.FC = () => {
               setUploadedFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'done', progress: 100 } : f));
             } catch (err: any) {
               clearInterval(progressInterval);
-              const isQuota = err.message?.includes('quota') || err.message?.includes('429');
               setUploadedFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'error', errorMessage: 'IA Ocupada' } : f));
-              if (isQuota) setErrorToast('IA ocupada. Tente aguardar um momento.');
             }
             resolve(true);
           };
@@ -358,8 +357,8 @@ const App: React.FC = () => {
                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 items-center">
                       <div className="text-center">
                          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-10">Saúde Financeira IA</h3>
-                         <div className="relative w-64 h-64 mx-auto flex items-center justify-center">
-                            <svg className="w-full h-full transform -rotate-90">
+                         <div className="relative w-64 h-64 mx-auto flex items-center justify-center aspect-square">
+                            <svg viewBox="0 0 256 256" className="w-full h-full transform -rotate-90">
                                <circle cx="128" cy="128" r="115" stroke="currentColor" strokeWidth="22" fill="transparent" className="text-slate-100" />
                                <circle cx="128" cy="128" r="115" stroke="currentColor" strokeWidth="22" fill="transparent" 
                                        strokeDasharray={722} strokeDashoffset={722 - (722 * aiAdvice.healthScore) / 100}
@@ -613,11 +612,11 @@ const App: React.FC = () => {
                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                   <div className="lg:col-span-1 bg-white p-12 rounded-[3rem] border border-slate-200 shadow-sm text-center flex flex-col items-center justify-center">
                     <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest mb-10">Score de Liquidez</p>
-                    <div className="relative w-56 h-56 flex items-center justify-center">
-                       <svg className="w-full h-full transform -rotate-90">
-                          <circle cx="112" cy="112" r="100" stroke="currentColor" strokeWidth="20" fill="transparent" className="text-slate-100" />
-                          <circle cx="112" cy="112" r="100" stroke="currentColor" strokeWidth="20" fill="transparent" 
-                                  strokeDasharray={628} strokeDashoffset={628 - (628 * aiAdvice.healthScore) / 100}
+                    <div className="relative w-56 h-56 flex items-center justify-center aspect-square">
+                       <svg viewBox="0 0 256 256" className="w-full h-full transform -rotate-90">
+                          <circle cx="128" cy="128" r="115" stroke="currentColor" strokeWidth="20" fill="transparent" className="text-slate-100" />
+                          <circle cx="128" cy="128" r="115" stroke="currentColor" strokeWidth="20" fill="transparent" 
+                                  strokeDasharray={722} strokeDashoffset={722 - (722 * aiAdvice.healthScore) / 100}
                                   className="text-emerald-500 transition-all duration-1000" strokeLinecap="round" />
                        </svg>
                        <span className="absolute text-7xl font-black tracking-tighter text-slate-900">{aiAdvice.healthScore}</span>

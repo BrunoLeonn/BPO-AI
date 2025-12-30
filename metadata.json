@@ -1,5 +1,5 @@
 {
-  "name": "BPO Financeiro AI Intelligence",
+  "name": "FlowFin",
   "description": "Uma plataforma avançada de BPO Financeiro que utiliza IA para automatizar a classificação de extratos bancários, gerar DRE, Fluxo de Caixa e Balanços patrimoniais automáticos.",
   "requestFramePermissions": [
     "camera"

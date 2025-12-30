@@ -2,7 +2,7 @@
 import React from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, Legend 
+  PieChart, Pie, Cell, Legend 
 } from 'recharts';
 import { Transaction, TransactionType } from '../types';
 
@@ -10,7 +10,7 @@ interface DashboardProps {
   transactions: Transaction[];
 }
 
-// Cores FlowFin (Azul Primário, Verde Primário e variações complementares)
+// Cores FlowFin (Azul e Verde institucionais)
 const COLORS = ['#2563EB', '#10B981', '#3b82f6', '#059669', '#60a5fa', '#34d399'];
 
 export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
@@ -22,14 +22,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
 
   const profit = summary.revenue - summary.expenses;
 
-  const categoryData = transactions
+  // Processamento inteligente das categorias para o gráfico de pizza
+  const rawCategoryData = transactions
     .filter(t => t.type === TransactionType.EXPENSE)
     .reduce((acc: any[], t) => {
       const existing = acc.find(i => i.name === t.category);
       if (existing) existing.value += Math.abs(t.amount);
       else acc.push({ name: t.category, value: Math.abs(t.amount) });
       return acc;
-    }, []);
+    }, [])
+    .sort((a, b) => b.value - a.value);
+
+  const totalExpense = rawCategoryData.reduce((sum, item) => sum + item.value, 0);
+
+  // Agrupar categorias irrelevantes (< 5%) ou após as top 5 em "OUTROS"
+  const categoryData = rawCategoryData.reduce((acc: any[], item, index) => {
+    const percentage = (item.value / totalExpense) * 100;
+    if (index < 5 && percentage >= 5) {
+      acc.push(item);
+    } else {
+      const others = acc.find(i => i.name === 'OUTROS');
+      if (others) others.value += item.value;
+      else acc.push({ name: 'OUTROS', value: item.value });
+    }
+    return acc;
+  }, []);
 
   const timelineData = transactions.reduce((acc: any[], t) => {
     const month = t.date.substring(0, 7);
@@ -92,7 +109,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
         </div>
 
         <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
-          <h3 className="text-xl font-black mb-8 text-slate-900 uppercase tracking-widest text-[12px]">Mix de Categorias</h3>
+          <h3 className="text-xl font-black mb-8 text-slate-900 uppercase tracking-widest text-[12px]">Mix de Categorias (Top 5)</h3>
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -110,7 +127,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', fontWeight: 'bold' }}
+                  formatter={(value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                />
                 <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }} />
               </PieChart>
             </ResponsiveContainer>
