@@ -120,8 +120,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
                   innerRadius={70}
                   outerRadius={120}
                   paddingAngle={8}
+                  minAngle={15}
                   dataKey="value"
-                  label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => (percent > 0.05 ? name : '')}
                 >
                   {categoryData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -131,7 +132,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
                   contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', fontWeight: 'bold' }}
                   formatter={(value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 />
-                <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }} />
+                <Legend 
+                  iconType="circle" 
+                  layout="horizontal" 
+                  align="center" 
+                  verticalAlign="bottom" 
+                  wrapperStyle={{ fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase', paddingTop: '20px' }} 
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>

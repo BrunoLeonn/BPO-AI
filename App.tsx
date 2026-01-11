@@ -5,7 +5,8 @@ import {
   Loader2, Sparkles, Building2, FileCheck, AlertCircle, X, Trash2, 
   Users, ShieldCheck, HeartPulse, Landmark, ArrowUpRight,
   FileSearch, CheckCircle, Clock, ListOrdered, Calendar, BarChart3,
-  CreditCard, Search, ArrowDownUp, Filter, Printer, Download, AlertTriangle
+  CreditCard, Search, ArrowDownUp, Filter, Printer, Download, AlertTriangle,
+  Lock, LogOut, UserCircle, Mail, Key, User
 } from 'lucide-react';
 import { CompanyProfile, Transaction, CRMClient, AIAdvice, BankAccount, TransactionType } from './types';
 import { Dashboard } from './components/Dashboard';
@@ -22,6 +23,15 @@ const FlowFinLogo = ({ className = "w-10 h-10" }: { className?: string }) => (
   </div>
 );
 
+const GoogleLogo = () => (
+  <svg width="20" height="20" viewBox="0 0 48 48" className="mr-3">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+  </svg>
+);
+
 interface FileStatus {
   name: string;
   size: number;
@@ -31,15 +41,31 @@ interface FileStatus {
 }
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'dre' | 'dfc' | 'upload' | 'setup' | 'crm' | 'strategy' | 'transactions' | 'banks' | 'full-report'>('setup');
-  const [company, setCompany] = useState<CompanyProfile>({
-    name: '',
-    cnpj: '',
-    industry: '',
-    fiscalYear: '2024'
+  // Estados de Autenticação
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<'cliente' | 'gestor' | null>(null);
+  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+
+  // Multi-cliente Contexto
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+
+  // Estados com Persistência LocalStorage
+  const [company, setCompany] = useState<CompanyProfile>(() => {
+    const saved = localStorage.getItem('flowfin_company');
+    return saved ? JSON.parse(saved) : { name: '', cnpj: '', industry: '', fiscalYear: '2024' };
   });
-  const [crm, setCRM] = useState<CRMClient[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  const [crm, setCRM] = useState<CRMClient[]>(() => {
+    const saved = localStorage.getItem('flowfin_crm');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('flowfin_transactions');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'dre' | 'dfc' | 'upload' | 'setup' | 'crm' | 'strategy' | 'transactions' | 'banks' | 'full-report'>('setup');
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [isProcessingCNPJ, setIsProcessingCNPJ] = useState(false);
   const [isProcessingStrategy, setIsProcessingStrategy] = useState(false);
@@ -52,6 +78,26 @@ const App: React.FC = () => {
   const cnpjInputRef = useRef<HTMLInputElement>(null);
   const statementInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-Save Effect
+  useEffect(() => {
+    localStorage.setItem('flowfin_company', JSON.stringify(company));
+  }, [company]);
+
+  useEffect(() => {
+    localStorage.setItem('flowfin_crm', JSON.stringify(crm));
+  }, [crm]);
+
+  useEffect(() => {
+    localStorage.setItem('flowfin_transactions', JSON.stringify(transactions));
+  }, [transactions]);
+
+  // Filtragem de Transações por Cliente Selecionado
+  const filteredTransactions = useMemo(() => {
+    if (!selectedClientId) return [];
+    // Usamos costCenter como proxy para armazenar o CNPJ do cliente nas transações
+    return transactions.filter(t => t.costCenter === selectedClientId);
+  }, [transactions, selectedClientId]);
+
   useEffect(() => {
     if (errorToast) {
       const timer = setTimeout(() => setErrorToast(null), 8000);
@@ -59,6 +105,26 @@ const App: React.FC = () => {
     }
   }, [errorToast]);
 
+  // Lógica de Login
+  const handleLogin = (role: 'cliente' | 'gestor') => {
+    setUserRole(role);
+    setIsAuthenticated(true);
+    if (role === 'gestor') {
+      setActiveTab('crm');
+    } else {
+      if (company.cnpj) setSelectedClientId(company.cnpj);
+      setActiveTab('setup');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUserRole(null);
+    setAuthView('login');
+    setSelectedClientId(null);
+  };
+
+  // Funções de Processamento
   const handleCNPJUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setIsProcessingCNPJ(true);
@@ -73,6 +139,9 @@ const App: React.FC = () => {
           const updatedCompany = { ...company, ...data };
           setCompany(updatedCompany as CompanyProfile);
           
+          // Define como cliente ativo
+          if (data.cnpj) setSelectedClientId(data.cnpj);
+
           const newClient: CRMClient = {
             id: Math.random().toString(36).substr(2, 9),
             ...updatedCompany,
@@ -93,9 +162,13 @@ const App: React.FC = () => {
 
   const handleStatementUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
+      if (!selectedClientId) {
+        setErrorToast('Selecione um cliente antes de importar extratos.');
+        return;
+      }
+
       setIsProcessingStatements(true);
       setErrorToast(null);
-      // Fix: Explicitly type newFiles as File[] to resolve 'unknown' property access errors
       const newFiles: File[] = Array.from(e.target.files);
       
       const initialFiles: FileStatus[] = newFiles.map(f => ({ 
@@ -134,7 +207,10 @@ const App: React.FC = () => {
                 fileName: file.name 
               });
               
-              allNewTransactions.push(...result);
+              // Injeta o ID do cliente selecionado na transação para persistência filtrada
+              const transactionsWithClient = result.map(t => ({ ...t, costCenter: selectedClientId! }));
+              
+              allNewTransactions.push(...transactionsWithClient);
               clearInterval(progressInterval);
               setUploadedFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'done', progress: 100 } : f));
             } catch (err: any) {
@@ -150,9 +226,9 @@ const App: React.FC = () => {
         const combined = [...prev, ...allNewTransactions];
         const sorted = combined.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         
-        const banksFound = Array.from(new Set(sorted.map(t => t.bankName)));
+        const banksFound = Array.from(new Set(sorted.filter(t => t.costCenter === selectedClientId).map(t => t.bankName)));
         const newAccounts = banksFound.map(bank => {
-          const bankTransactions = sorted.filter(t => t.bankName === bank);
+          const bankTransactions = sorted.filter(t => t.bankName === bank && t.costCenter === selectedClientId);
           const balance = bankTransactions.reduce((acc, t) => acc + (t.type === TransactionType.INCOME ? t.amount : -Math.abs(t.amount)), 0);
           return {
             id: bank,
@@ -174,10 +250,10 @@ const App: React.FC = () => {
   };
 
   const loadStrategy = async () => {
-    if (transactions.length === 0) return;
+    if (filteredTransactions.length === 0) return;
     setIsProcessingStrategy(true);
     try {
-      const advice = await generateAIStrategy(company, transactions);
+      const advice = await generateAIStrategy(company, filteredTransactions);
       setAIAdvice(advice);
       setActiveTab('strategy');
     } catch (err: any) {
@@ -210,8 +286,149 @@ const App: React.FC = () => {
     </button>
   );
 
+  // --- RENDERIZAÇÃO TELA DE AUTENTICAÇÃO ---
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-inter">
+        <div className="mb-12 flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-500">
+          <FlowFinLogo className="w-24 h-24 bg-white p-4 rounded-[2rem] shadow-2xl shadow-blue-100 mb-6" />
+          <h1 className="text-4xl font-black text-slate-900 tracking-tighter">FLOWFIN</h1>
+          <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2">Fluxo Gestão Financeira</p>
+        </div>
+
+        {authView === 'login' ? (
+          <div className="w-full max-w-4xl space-y-10 animate-in fade-in zoom-in-95 duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Card Cliente */}
+              <button 
+                onClick={() => handleLogin('cliente')}
+                className="group relative bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:border-blue-400 transition-all text-left overflow-hidden active:scale-95"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full -mr-16 -mt-16 group-hover:bg-blue-600/10 transition-colors"></div>
+                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-lg shadow-blue-50">
+                  <Building2 size={32} />
+                </div>
+                <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Acesso Cliente</h2>
+                <p className="text-slate-500 font-medium leading-relaxed">
+                  Importe seus extratos, visualize seus relatórios e acompanhe a saúde do seu negócio.
+                </p>
+                <div className="mt-8 flex items-center text-blue-600 font-black text-sm uppercase tracking-widest">
+                  Entrar como Cliente <ChevronRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+
+              {/* Card Gestor */}
+              <button 
+                onClick={() => handleLogin('gestor')}
+                className="group relative bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:border-emerald-400 transition-all text-left overflow-hidden active:scale-95"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-emerald-500/10 transition-colors"></div>
+                <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-lg shadow-emerald-50">
+                  <ShieldCheck size={32} />
+                </div>
+                <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Acesso Gestor</h2>
+                <p className="text-slate-500 font-medium leading-relaxed">
+                  Gestão de carteira de clientes, CRM avançado e consultoria estratégica via IA.
+                </p>
+                <div className="mt-8 flex items-center text-emerald-600 font-black text-sm uppercase tracking-widest">
+                  Entrar como Gestor <ChevronRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center space-y-6">
+              <button 
+                className="flex items-center justify-center w-full max-w-sm bg-white border border-slate-200 p-4 rounded-2xl font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+              >
+                <GoogleLogo />
+                Continuar com Google
+              </button>
+              
+              <button 
+                onClick={() => setAuthView('register')}
+                className="text-blue-600 font-bold hover:underline"
+              >
+                Não tem uma conta? Cadastre-se aqui
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full max-w-lg bg-white p-12 rounded-[3rem] border border-slate-200 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter">Crie sua conta</h2>
+            
+            <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); handleLogin('cliente'); }}>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Nome Completo</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input type="text" placeholder="Seu nome" className="w-full bg-slate-50 border border-slate-100 p-4 pl-12 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium" required />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">E-mail Corporativo</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input type="email" placeholder="email@empresa.com" className="w-full bg-slate-50 border border-slate-100 p-4 pl-12 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium" required />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Senha</label>
+                <div className="relative">
+                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input type="password" placeholder="••••••••" className="w-full bg-slate-50 border border-slate-100 p-4 pl-12 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium" required />
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Tipo de Perfil</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <label className="relative cursor-pointer">
+                    <input type="radio" name="reg-role" className="peer sr-only" defaultChecked />
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center font-bold text-slate-500 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition-all">
+                      Sou Empresa
+                    </div>
+                  </label>
+                  <label className="relative cursor-pointer">
+                    <input type="radio" name="reg-role" className="peer sr-only" />
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center font-bold text-slate-500 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:border-emerald-500 transition-all">
+                      Sou Gestor
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-slate-900 text-white p-5 rounded-2xl font-black text-lg shadow-xl hover:bg-slate-800 transition-all active:scale-95 mt-4"
+              >
+                Cadastrar agora
+              </button>
+
+              <div className="pt-6 text-center">
+                <button 
+                  type="button"
+                  onClick={() => setAuthView('login')}
+                  className="text-slate-400 font-bold hover:text-slate-600 transition-colors"
+                >
+                  Já tem uma conta? Entre aqui
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <p className="mt-12 text-slate-400 font-medium text-sm uppercase tracking-widest">
+          Powered by <span className="text-blue-600 font-bold">Bruno Leonn</span>
+        </p>
+      </div>
+    );
+  }
+
+  // --- RENDERIZAÇÃO DASHBOARD (SÓ SE AUTENTICADO) ---
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden font-inter">
       <style>
         {`
           @media print {
@@ -252,24 +469,24 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <nav className="space-y-1.5">
+          <nav className="space-y-1.5 overflow-y-auto max-h-[calc(100vh-300px)]">
             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-3">Gestão</div>
-            <NavItem id="dashboard" icon={LayoutDashboard} label="Dashboard BI" disabled={transactions.length === 0} />
-            <NavItem id="strategy" icon={HeartPulse} label="Consultoria Flow" disabled={transactions.length === 0} />
-            <NavItem id="full-report" icon={FileCheck} label="Relatório Final" disabled={transactions.length === 0 || !aiAdvice} />
-            <NavItem id="dre" icon={FileText} label="Relatório DRE" disabled={transactions.length === 0} />
-            <NavItem id="dfc" icon={TrendingUp} label="Fluxo de Caixa" disabled={transactions.length === 0} />
+            <NavItem id="dashboard" icon={LayoutDashboard} label="Dashboard BI" disabled={filteredTransactions.length === 0} />
+            <NavItem id="strategy" icon={HeartPulse} label="Consultoria Flow" disabled={filteredTransactions.length === 0} />
+            <NavItem id="full-report" icon={FileCheck} label="Relatório Final" disabled={filteredTransactions.length === 0 || !aiAdvice} />
+            <NavItem id="dre" icon={FileText} label="Relatório DRE" disabled={filteredTransactions.length === 0} />
+            <NavItem id="dfc" icon={TrendingUp} label="Fluxo de Caixa" disabled={filteredTransactions.length === 0} />
             
             <div className="pt-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-3">Operacional</div>
             <NavItem id="upload" icon={Upload} label="Importar Dados" />
             <NavItem id="banks" icon={Building2} label="Contas Bancárias" disabled={bankAccounts.length === 0} />
-            <NavItem id="transactions" icon={ArrowDownUp} label="Extrato Consolidado" disabled={transactions.length === 0} />
-            <NavItem id="crm" icon={Users} label="Clientes CRM" />
+            <NavItem id="transactions" icon={ArrowDownUp} label="Extrato Consolidado" disabled={filteredTransactions.length === 0} />
+            {userRole === 'gestor' && <NavItem id="crm" icon={Users} label="Clientes CRM" />}
             <NavItem id="setup" icon={Settings} label="Onboarding IA" />
           </nav>
         </div>
 
-        <div className="mt-auto p-6 border-t border-slate-100">
+        <div className="mt-auto p-6 border-t border-slate-100 space-y-4">
           <div className="bg-slate-50 p-4 rounded-2xl">
             <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Empresa Ativa</p>
             <div className="flex items-center space-x-2">
@@ -277,6 +494,25 @@ const App: React.FC = () => {
               <p className="text-sm font-bold truncate text-slate-800">{company.name || 'Aguardando Seleção'}</p>
             </div>
           </div>
+          
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center space-x-2">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-[10px] ${userRole === 'gestor' ? 'bg-emerald-500' : 'bg-blue-600'}`}>
+                {userRole === 'gestor' ? 'GS' : 'CL'}
+              </div>
+              <p className="text-xs font-black text-slate-600 uppercase truncate max-w-[80px]">{userRole}</p>
+            </div>
+            <button 
+              onClick={handleLogout}
+              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+              title="Sair"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+          <p className="text-center text-[8px] font-black text-slate-400 uppercase tracking-widest mt-2">
+            Powered by <span className="text-blue-600 font-bold">Bruno Leonn</span>
+          </p>
         </div>
       </aside>
 
@@ -380,7 +616,7 @@ const App: React.FC = () => {
 
                 <div className="p-16 report-page bg-slate-50">
                    <h3 className="text-3xl font-black text-slate-900 mb-12">Dashboards de Performance</h3>
-                   <Dashboard transactions={transactions} />
+                   <Dashboard transactions={filteredTransactions} />
                 </div>
               </div>
             </div>
@@ -396,7 +632,7 @@ const App: React.FC = () => {
                       </div>
                       <button 
                          onClick={loadStrategy}
-                         disabled={transactions.length === 0 || isProcessingStrategy}
+                         disabled={filteredTransactions.length === 0 || isProcessingStrategy}
                          className="bg-gradient-to-r from-blue-600 to-emerald-500 text-white px-10 py-5 rounded-2xl font-black shadow-xl hover:shadow-2xl transition-all flex items-center disabled:opacity-30"
                        >
                          {isProcessingStrategy ? <Loader2 className="animate-spin mr-3" /> : <Sparkles className="mr-3" />}
@@ -527,10 +763,10 @@ const App: React.FC = () => {
                           </tr>
                        </thead>
                        <tbody className="divide-y divide-slate-50">
-                          {transactions.length === 0 ? (
+                          {filteredTransactions.length === 0 ? (
                             <tr><td colSpan={5} className="px-8 py-20 text-center text-slate-400 font-bold italic">Sem lançamentos registrados.</td></tr>
                           ) : (
-                            transactions.map(t => (
+                            filteredTransactions.map(t => (
                               <tr key={t.id} className="hover:bg-slate-50 transition-colors">
                                  <td className="px-8 py-8 text-sm font-bold text-slate-500">{new Date(t.date).toLocaleDateString()}</td>
                                  <td className="px-8 py-8">
@@ -586,11 +822,14 @@ const App: React.FC = () => {
                             <td className="px-8 py-8 text-sm font-bold text-slate-500">{client.onboardingDate}</td>
                             <td className="px-8 py-8 text-right">
                               <button 
-                                onClick={() => { setCompany(client); setActiveTab('upload'); }} 
-                                className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white p-4 rounded-2xl transition-all shadow-sm active:scale-95"
-                                title="Abrir Fluxo"
+                                onClick={() => { 
+                                  setCompany(client); 
+                                  setSelectedClientId(client.cnpj);
+                                  setActiveTab('dashboard'); 
+                                }} 
+                                className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-6 py-3 rounded-2xl transition-all shadow-sm active:scale-95 font-bold flex items-center ml-auto"
                               >
-                                <ArrowUpRight size={22} />
+                                Gerenciar <ArrowUpRight size={18} className="ml-2" />
                               </button>
                             </td>
                           </tr>
@@ -603,9 +842,9 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'dashboard' && <div className="no-print animate-in fade-in duration-500"><Dashboard transactions={transactions} /></div>}
-          {activeTab === 'dre' && <div className="no-print animate-in fade-in duration-500"><DRE transactions={transactions} /></div>}
-          {activeTab === 'dfc' && <div className="no-print animate-in fade-in duration-500"><DFC transactions={transactions} /></div>}
+          {activeTab === 'dashboard' && <div className="no-print animate-in fade-in duration-500"><Dashboard transactions={filteredTransactions} /></div>}
+          {activeTab === 'dre' && <div className="no-print animate-in fade-in duration-500"><DRE transactions={filteredTransactions} /></div>}
+          {activeTab === 'dfc' && <div className="no-print animate-in fade-in duration-500"><DFC transactions={filteredTransactions} /></div>}
           
           {activeTab === 'strategy' && aiAdvice && (
              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700 no-print">
