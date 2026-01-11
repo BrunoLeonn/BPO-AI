@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, FileText, Upload, Settings, TrendingUp, ChevronRight, 
@@ -77,7 +78,7 @@ const App: React.FC = () => {
   });
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'dre' | 'dfc' | 'upload' | 'setup' | 'crm' | 'strategy' | 'transactions' | 'banks' | 'full-report'>('setup');
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  
   const [isProcessingCNPJ, setIsProcessingCNPJ] = useState(false);
   const [isProcessingStrategy, setIsProcessingStrategy] = useState(false);
   const [isProcessingStatements, setIsProcessingStatements] = useState(false);
@@ -89,7 +90,7 @@ const App: React.FC = () => {
   const cnpjInputRef = useRef<HTMLInputElement>(null);
   const statementInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-Save Effect
+  // Auto-Save Effects
   useEffect(() => {
     localStorage.setItem('flowfin_company', JSON.stringify(company));
   }, [company]);
@@ -107,6 +108,30 @@ const App: React.FC = () => {
     if (!selectedClientId) return [];
     return transactions.filter(t => t.costCenter === selectedClientId);
   }, [transactions, selectedClientId]);
+
+  // Cálculo de Contas Bancárias Reativo (Evita loops e melhora performance)
+  const bankAccounts = useMemo(() => {
+    if (!selectedClientId) return [];
+    
+    const clientTransactions = transactions.filter(t => t.costCenter === selectedClientId);
+    const banksFound = Array.from(new Set(clientTransactions.map(t => t.bankName)));
+    
+    return banksFound.map(bank => {
+      const bankTransactions = clientTransactions.filter(t => t.bankName === bank);
+      const balance = bankTransactions.reduce((acc, t) => 
+        acc + (t.type === TransactionType.INCOME ? t.amount : -Math.abs(t.amount)), 0);
+      
+      return {
+        id: bank,
+        bankName: bank,
+        companyName: company.name || 'Empresa Cliente',
+        currentBalance: balance,
+        accountNumber: 'Sincronizado',
+        agency: '---',
+        lastUpdated: new Date().toLocaleDateString()
+      } as BankAccount;
+    });
+  }, [transactions, selectedClientId, company.name]);
 
   useEffect(() => {
     if (errorToast) {
@@ -217,13 +242,13 @@ const App: React.FC = () => {
               });
               
               const transactionsWithClient = result.map(t => ({ ...t, costCenter: selectedClientId! }));
-              
               allNewTransactions.push(...transactionsWithClient);
+              
               clearInterval(progressInterval);
               setUploadedFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'done', progress: 100 } : f));
             } catch (err: any) {
               clearInterval(progressInterval);
-              setUploadedFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'error', errorMessage: 'IA Ocupada' } : f));
+              setUploadedFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'error', errorMessage: 'Processamento Falhou' } : f));
             }
             resolve(true);
           };
@@ -232,25 +257,7 @@ const App: React.FC = () => {
 
       setTransactions(prev => {
         const combined = [...prev, ...allNewTransactions];
-        const sorted = combined.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        
-        const banksFound = Array.from(new Set(sorted.filter(t => t.costCenter === selectedClientId).map(t => t.bankName)));
-        const newAccounts = banksFound.map(bank => {
-          const bankTransactions = sorted.filter(t => t.bankName === bank && t.costCenter === selectedClientId);
-          const balance = bankTransactions.reduce((acc, t) => acc + (t.type === TransactionType.INCOME ? t.amount : -Math.abs(t.amount)), 0);
-          return {
-            id: bank,
-            bankName: bank,
-            companyName: company.name || 'Empresa Cliente',
-            currentBalance: balance,
-            accountNumber: 'Sincronizado',
-            agency: '---',
-            lastUpdated: new Date().toLocaleDateString()
-          };
-        });
-        setBankAccounts(newAccounts);
-
-        return sorted;
+        return combined.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       });
 
       setIsProcessingStatements(false);
@@ -529,7 +536,7 @@ const App: React.FC = () => {
                   <FlowFinLogo className="w-16 h-16 bg-white rounded-2xl p-2 mb-8 shadow-2xl" />
                   <h2 className="text-5xl font-black mb-4 tracking-tighter">Onboarding Inteligente</h2>
                   <p className="text-blue-50 text-xl max-w-xl opacity-90 leading-relaxed">
-                    Comece o fluxo enviando o Cartão CNPJ do seu cliente. Nossa IA irá configurar todo o plano de contas automaticamente.
+                    Comece o fluxo enviando o Cartão CNPJ do seu cliente. Nossa tecnologia de IA irá configurar todo o plano de contas automaticamente.
                   </p>
                   <div className="mt-12">
                     <button 
@@ -589,12 +596,15 @@ const App: React.FC = () => {
                          </div>
                       </div>
                    </div>
+                   <div className="absolute bottom-6 right-10 opacity-50">
+                     <p className="text-[10px] font-bold uppercase tracking-widest">Powered by <span className="text-emerald-400 font-black">Bruno Leonn</span></p>
+                   </div>
                 </div>
 
                 <div className="p-16 report-page bg-white">
                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 items-center">
                       <div className="text-center">
-                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-10">Saúde Financeira IA</h3>
+                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-10">Saúde Financeira</h3>
                          <div className="relative w-64 h-64 mx-auto flex items-center justify-center aspect-square">
                             <svg viewBox="0 0 256 256" className="w-full h-full transform -rotate-90">
                                <circle cx="128" cy="128" r="115" stroke="currentColor" strokeWidth="22" fill="transparent" className="text-slate-100" />
@@ -693,7 +703,7 @@ const App: React.FC = () => {
                         </div>
                         <div className="mb-10 space-y-1 relative z-10">
                            <p className="text-slate-500 text-sm font-bold">Status: Ativo e Conciliado</p>
-                           <p className="text-slate-400 text-xs font-medium">Conta detectada via Processamento IA</p>
+                           <p className="text-slate-400 text-xs font-medium">Conta detectada via Processamento Inteligente</p>
                         </div>
                         <div className="pt-8 border-t border-slate-100 relative z-10">
                            <p className="text-xs font-black text-slate-400 uppercase mb-2">Saldo Projetado</p>
@@ -830,7 +840,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="lg:col-span-2 bg-white p-16 rounded-[3rem] border border-slate-200 shadow-sm flex flex-col justify-center">
                     <h3 className="text-3xl font-black mb-8 flex items-center text-slate-900">
-                      <Sparkles className="mr-3 text-blue-600" /> Consultoria FlowFin
+                      <Sparkles className="mr-3 text-blue-600" /> Consultoria Financeira
                     </h3>
                     <p className="text-slate-600 leading-relaxed text-2xl font-medium italic border-l-[12px] border-emerald-100 pl-12 py-4">
                       "{aiAdvice.summary}"
