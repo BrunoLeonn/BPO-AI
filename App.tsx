@@ -41,14 +41,15 @@ interface FileStatus {
 }
 
 const App: React.FC = () => {
-  // Estados de Autenticação e Visão
+  // 1. Estados de Autenticação e Visão - Inicia sempre como false conforme solicitado
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'cliente' | 'gestor' | null>(null);
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'dre' | 'dfc' | 'upload' | 'setup' | 'crm' | 'strategy' | 'transactions' | 'banks' | 'full-report'>('setup');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Estados principais inicializados vazios
+  // 2. Estados principais - Rigorosamente limpos para produção
   const [company, setCompany] = useState<CompanyProfile>({ name: '', cnpj: '', industry: '', fiscalYear: '2024' });
   const [crm, setCRM] = useState<CRMClient[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -65,42 +66,58 @@ const App: React.FC = () => {
   const cnpjInputRef = useRef<HTMLInputElement>(null);
   const statementInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Carregamento Único do LocalStorage na Montagem
+  // 3. Fluxo de Inicialização Definitivo com Hidratação Protegida
   useEffect(() => {
-    try {
-      const savedCompany = localStorage.getItem('flowfin_company');
-      if (savedCompany) setCompany(JSON.parse(savedCompany));
+    const hydrateData = () => {
+      try {
+        const savedCompany = localStorage.getItem('flowfin_company');
+        if (savedCompany) {
+          const parsed = JSON.parse(savedCompany);
+          if (parsed && typeof parsed === 'object') setCompany(parsed);
+        }
 
-      const savedCRM = localStorage.getItem('flowfin_crm');
-      if (savedCRM) setCRM(JSON.parse(savedCRM));
+        const savedCRM = localStorage.getItem('flowfin_crm');
+        if (savedCRM) {
+          const parsed = JSON.parse(savedCRM);
+          if (Array.isArray(parsed)) setCRM(parsed);
+        }
 
-      const savedTransactions = localStorage.getItem('flowfin_transactions');
-      if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
-    } catch (e) {
-      console.error("Erro ao carregar dados do LocalStorage", e);
-    }
-  }, []); // Dependência vazia garante execução única
+        const savedTransactions = localStorage.getItem('flowfin_transactions');
+        if (savedTransactions) {
+          const parsed = JSON.parse(savedTransactions);
+          if (Array.isArray(parsed)) setTransactions(parsed);
+        }
+      } catch (e) {
+        console.error("Falha na hidratação segura do LocalStorage. Dados resetados.", e);
+        // Em caso de erro de parsing, o estado permanece nos valores iniciais limpos
+      } finally {
+        setIsHydrated(true);
+      }
+    };
 
-  // 2. Persistência com Guardas para evitar loops e perda de dados
+    hydrateData();
+  }, []);
+
+  // 4. Persistência Segura com Guardas
   useEffect(() => {
-    if (company.cnpj) { // Salva apenas se houver uma empresa configurada
+    if (isHydrated && company.cnpj) {
       localStorage.setItem('flowfin_company', JSON.stringify(company));
     }
-  }, [company]);
+  }, [company, isHydrated]);
 
   useEffect(() => {
-    if (crm.length > 0) {
+    if (isHydrated && crm.length > 0) {
       localStorage.setItem('flowfin_crm', JSON.stringify(crm));
     }
-  }, [crm]);
+  }, [crm, isHydrated]);
 
   useEffect(() => {
-    if (transactions.length > 0) {
+    if (isHydrated && transactions.length > 0) {
       localStorage.setItem('flowfin_transactions', JSON.stringify(transactions));
     }
-  }, [transactions]);
+  }, [transactions, isHydrated]);
 
-  // 3. Cálculos Memoizados (useMemo) - Evitam loops por recriação de objetos
+  // Cálculos Memoizados
   const filteredTransactions = useMemo(() => {
     if (!selectedClientId) return [];
     return transactions.filter(t => t.costCenter === selectedClientId);
@@ -296,6 +313,15 @@ const App: React.FC = () => {
       <span className="font-bold text-sm">{label}</span>
     </button>
   );
+
+  // Enquanto não hidratou os dados do localStorage, não renderiza para evitar "flicker" de estado
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="animate-spin text-blue-600" size={48} />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
