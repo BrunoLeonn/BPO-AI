@@ -13,7 +13,7 @@ import { Dashboard } from './components/Dashboard.tsx';
 import { DRE, DFC } from './components/FinancialReports.tsx';
 import { processStatementFile, analyzeCNPJCard, generateAIStrategy } from './geminiService.ts';
 
-// Componente de Logo fiel à imagem enviada
+// Componente de Logo institucional
 const FlowFinLogo = ({ className = "w-10 h-10" }: { className?: string }) => (
   <div className={`relative flex items-center ${className}`}>
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
@@ -41,44 +41,19 @@ interface FileStatus {
 }
 
 const App: React.FC = () => {
-  // Estados de Autenticação
+  // Estados de Autenticação e Visão
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'cliente' | 'gestor' | null>(null);
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
-
-  // Multi-cliente Contexto
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'dre' | 'dfc' | 'upload' | 'setup' | 'crm' | 'strategy' | 'transactions' | 'banks' | 'full-report'>('setup');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
-  // Estados com Persistência LocalStorage Robustos
-  const [company, setCompany] = useState<CompanyProfile>(() => {
-    try {
-      const saved = localStorage.getItem('flowfin_company');
-      return saved ? JSON.parse(saved) : { name: '', cnpj: '', industry: '', fiscalYear: '2024' };
-    } catch (e) {
-      return { name: '', cnpj: '', industry: '', fiscalYear: '2024' };
-    }
-  });
-
-  const [crm, setCRM] = useState<CRMClient[]>(() => {
-    try {
-      const saved = localStorage.getItem('flowfin_crm');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      const saved = localStorage.getItem('flowfin_transactions');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'dre' | 'dfc' | 'upload' | 'setup' | 'crm' | 'strategy' | 'transactions' | 'banks' | 'full-report'>('setup');
+  // Estados principais inicializados vazios
+  const [company, setCompany] = useState<CompanyProfile>({ name: '', cnpj: '', industry: '', fiscalYear: '2024' });
+  const [crm, setCRM] = useState<CRMClient[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   
+  // Estados de processamento e UI
   const [isProcessingCNPJ, setIsProcessingCNPJ] = useState(false);
   const [isProcessingStrategy, setIsProcessingStrategy] = useState(false);
   const [isProcessingStatements, setIsProcessingStatements] = useState(false);
@@ -90,26 +65,47 @@ const App: React.FC = () => {
   const cnpjInputRef = useRef<HTMLInputElement>(null);
   const statementInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-Save Effects
+  // 1. Carregamento Único do LocalStorage na Montagem
   useEffect(() => {
-    localStorage.setItem('flowfin_company', JSON.stringify(company));
+    try {
+      const savedCompany = localStorage.getItem('flowfin_company');
+      if (savedCompany) setCompany(JSON.parse(savedCompany));
+
+      const savedCRM = localStorage.getItem('flowfin_crm');
+      if (savedCRM) setCRM(JSON.parse(savedCRM));
+
+      const savedTransactions = localStorage.getItem('flowfin_transactions');
+      if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
+    } catch (e) {
+      console.error("Erro ao carregar dados do LocalStorage", e);
+    }
+  }, []); // Dependência vazia garante execução única
+
+  // 2. Persistência com Guardas para evitar loops e perda de dados
+  useEffect(() => {
+    if (company.cnpj) { // Salva apenas se houver uma empresa configurada
+      localStorage.setItem('flowfin_company', JSON.stringify(company));
+    }
   }, [company]);
 
   useEffect(() => {
-    localStorage.setItem('flowfin_crm', JSON.stringify(crm));
+    if (crm.length > 0) {
+      localStorage.setItem('flowfin_crm', JSON.stringify(crm));
+    }
   }, [crm]);
 
   useEffect(() => {
-    localStorage.setItem('flowfin_transactions', JSON.stringify(transactions));
+    if (transactions.length > 0) {
+      localStorage.setItem('flowfin_transactions', JSON.stringify(transactions));
+    }
   }, [transactions]);
 
-  // Filtragem de Transações por Cliente Selecionado
+  // 3. Cálculos Memoizados (useMemo) - Evitam loops por recriação de objetos
   const filteredTransactions = useMemo(() => {
     if (!selectedClientId) return [];
     return transactions.filter(t => t.costCenter === selectedClientId);
   }, [transactions, selectedClientId]);
 
-  // Cálculo de Contas Bancárias Reativo (Evita loops e melhora performance)
   const bankAccounts = useMemo(() => {
     if (!selectedClientId) return [];
     
