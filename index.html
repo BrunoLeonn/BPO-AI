@@ -53,10 +53,11 @@
             <p class="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Iniciando FlowFin...</p>
         </div>
     </div>
-    <script type="module">
-        import { run } from "https://esm.sh/run";
-        run();
-    </script>
+    <!-- 
+      O script 'run' do esm.sh deve ser carregado como src para processar scripts type="text/tsx" 
+      corretamente sem erros de named exports.
+    -->
+    <script type="module" src="https://esm.sh/run"></script>
     <script type="text/tsx" src="index.tsx"></script>
 </body>
 </html>

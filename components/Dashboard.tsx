@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend 
 } from 'recharts';
-import { Transaction, TransactionType } from '../types';
+import { Transaction, TransactionType } from '../types.ts';
 
 interface DashboardProps {
   transactions: Transaction[];
