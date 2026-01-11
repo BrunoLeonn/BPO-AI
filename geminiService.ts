@@ -2,11 +2,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { CompanyProfile, Transaction, AIAdvice } from "./types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const analyzeCNPJCard = async (
   fileData: { data: string; mimeType: string }
 ): Promise<Partial<CompanyProfile>> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `Você é um assistente de onboarding de BPO. Analise o Cartão CNPJ anexo.
     Extraia os seguintes dados estruturados:
     - Razão Social (name)
@@ -50,6 +49,7 @@ export const generateAIStrategy = async (
   company: CompanyProfile,
   transactions: Transaction[]
 ): Promise<AIAdvice> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const summaryData = transactions.slice(-50).map(t => ({
     desc: t.description,
     val: t.amount,
@@ -95,10 +95,11 @@ export const processStatementFile = async (
   company: CompanyProfile,
   fileData: { data: string; mimeType: string; fileName: string }
 ): Promise<Transaction[]> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const isPDF = fileData.mimeType === 'application/pdf';
   const prompt = `Analise o extrato bancário (Arquivo: ${fileData.fileName}) da empresa ${company.name} (${company.industry || 'Geral'}). 
     Extraia TODAS as transações e classifique-as no plano de contas.
-    IMPORTANTE: Atribua um percentual de confiança (0-100) para cada classificação baseada na descrição.
+    IMPORTANTE: Atribua um percentual de confiança (0-100) for cada classificação baseada na descrição.
     A data deve estar obrigatoriamente no formato ISO YYYY-MM-DD.
     Identifique o banco (ex: Santander, Mercado Pago, Itaú) a partir do conteúdo do extrato.
     Seja preciso com valores negativos (saídas) e positivos (entradas).`;

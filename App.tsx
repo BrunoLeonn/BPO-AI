@@ -49,20 +49,32 @@ const App: React.FC = () => {
   // Multi-cliente Contexto
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
-  // Estados com Persistência LocalStorage
+  // Estados com Persistência LocalStorage Robustos
   const [company, setCompany] = useState<CompanyProfile>(() => {
-    const saved = localStorage.getItem('flowfin_company');
-    return saved ? JSON.parse(saved) : { name: '', cnpj: '', industry: '', fiscalYear: '2024' };
+    try {
+      const saved = localStorage.getItem('flowfin_company');
+      return saved ? JSON.parse(saved) : { name: '', cnpj: '', industry: '', fiscalYear: '2024' };
+    } catch (e) {
+      return { name: '', cnpj: '', industry: '', fiscalYear: '2024' };
+    }
   });
 
   const [crm, setCRM] = useState<CRMClient[]>(() => {
-    const saved = localStorage.getItem('flowfin_crm');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('flowfin_crm');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('flowfin_transactions');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('flowfin_transactions');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'dre' | 'dfc' | 'upload' | 'setup' | 'crm' | 'strategy' | 'transactions' | 'banks' | 'full-report'>('setup');
@@ -94,7 +106,6 @@ const App: React.FC = () => {
   // Filtragem de Transações por Cliente Selecionado
   const filteredTransactions = useMemo(() => {
     if (!selectedClientId) return [];
-    // Usamos costCenter como proxy para armazenar o CNPJ do cliente nas transações
     return transactions.filter(t => t.costCenter === selectedClientId);
   }, [transactions, selectedClientId]);
 
@@ -139,7 +150,6 @@ const App: React.FC = () => {
           const updatedCompany = { ...company, ...data };
           setCompany(updatedCompany as CompanyProfile);
           
-          // Define como cliente ativo
           if (data.cnpj) setSelectedClientId(data.cnpj);
 
           const newClient: CRMClient = {
@@ -207,7 +217,6 @@ const App: React.FC = () => {
                 fileName: file.name 
               });
               
-              // Injeta o ID do cliente selecionado na transação para persistência filtrada
               const transactionsWithClient = result.map(t => ({ ...t, costCenter: selectedClientId! }));
               
               allNewTransactions.push(...transactionsWithClient);
@@ -286,7 +295,6 @@ const App: React.FC = () => {
     </button>
   );
 
-  // --- RENDERIZAÇÃO TELA DE AUTENTICAÇÃO ---
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-inter">
@@ -299,7 +307,6 @@ const App: React.FC = () => {
         {authView === 'login' ? (
           <div className="w-full max-w-4xl space-y-10 animate-in fade-in zoom-in-95 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Card Cliente */}
               <button 
                 onClick={() => handleLogin('cliente')}
                 className="group relative bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:border-blue-400 transition-all text-left overflow-hidden active:scale-95"
@@ -317,7 +324,6 @@ const App: React.FC = () => {
                 </div>
               </button>
 
-              {/* Card Gestor */}
               <button 
                 onClick={() => handleLogin('gestor')}
                 className="group relative bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:border-emerald-400 transition-all text-left overflow-hidden active:scale-95"
@@ -426,7 +432,6 @@ const App: React.FC = () => {
     );
   }
 
-  // --- RENDERIZAÇÃO DASHBOARD (SÓ SE AUTENTICADO) ---
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-inter">
       <style>
@@ -444,7 +449,6 @@ const App: React.FC = () => {
         `}
       </style>
 
-      {/* Toast de Erro */}
       {errorToast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-4">
           <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 border border-slate-700">
@@ -518,7 +522,6 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto p-10">
         <div className="max-w-6xl mx-auto">
-          
           {activeTab === 'setup' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 no-print">
               <div className="bg-gradient-to-br from-blue-700 to-emerald-600 p-12 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
@@ -655,41 +658,6 @@ const App: React.FC = () => {
                       <p className="text-slate-400 font-bold mt-2">Arraste arquivos ou clique para selecionar</p>
                       <input type="file" ref={statementInputRef} className="hidden" multiple accept=".pdf,.ofx,.csv" onChange={handleStatementUpload} disabled={isProcessingStatements} />
                    </div>
-
-                   {uploadedFiles.length > 0 && (
-                     <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {uploadedFiles.map((file, idx) => (
-                          <div key={idx} className={`relative overflow-hidden flex flex-col p-8 rounded-[2rem] border transition-all ${
-                            file.status === 'loading' ? 'bg-white border-blue-200 shadow-xl scale-[1.02]' : 
-                            file.status === 'error' ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-100'
-                          }`}>
-                             {file.status === 'loading' && <div className="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-blue-600 to-emerald-500 transition-all" style={{ width: `${file.progress}%` }} />}
-                             <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-5">
-                                   <div className={`p-4 rounded-2xl shadow-sm ${
-                                     file.status === 'done' ? 'bg-emerald-100 text-emerald-600' : 
-                                     file.status === 'error' ? 'bg-red-100 text-red-600' : 'bg-white'
-                                   }`}>
-                                      {file.status === 'error' ? <AlertTriangle size={24} /> : <FileSearch size={24} />}
-                                   </div>
-                                   <div>
-                                      <p className="text-lg font-black text-slate-800 truncate max-w-[200px]">{file.name}</p>
-                                      <p className="text-xs text-slate-400 font-black uppercase">
-                                        {file.status === 'done' ? 'Sincronizado' : 
-                                         file.status === 'error' ? (file.errorMessage || 'Falha') : 'Classificando via IA...'}
-                                      </p>
-                                   </div>
-                                </div>
-                                <div className="text-right">
-                                   <p className={`text-xl font-black ${file.status === 'error' ? 'text-red-600' : 'text-blue-600'}`}>
-                                     {file.status === 'error' ? '!' : `${Math.round(file.progress)}%`}
-                                   </p>
-                                </div>
-                             </div>
-                          </div>
-                        ))}
-                     </div>
-                   )}
                 </div>
              </div>
           )}
