@@ -1,10 +1,11 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { CompanyProfile, Transaction, AIAdvice } from "./types";
+import { CompanyProfile, Transaction, AIAdvice } from "./types.ts";
 
 export const analyzeCNPJCard = async (
   fileData: { data: string; mimeType: string }
 ): Promise<Partial<CompanyProfile>> => {
+  // Always use process.env.API_KEY directly for initialization
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `Você é um assistente de onboarding de BPO. Analise o Cartão CNPJ anexo.
     Extraia os seguintes dados estruturados:
@@ -49,6 +50,7 @@ export const generateAIStrategy = async (
   company: CompanyProfile,
   transactions: Transaction[]
 ): Promise<AIAdvice> => {
+  // Always use process.env.API_KEY directly for initialization
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const summaryData = transactions.slice(-50).map(t => ({
     desc: t.description,
@@ -70,7 +72,8 @@ export const generateAIStrategy = async (
     Seja crítico, profissional e direto.`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    // Use gemini-3-pro-preview for complex reasoning and financial consultancy tasks
+    model: "gemini-3-pro-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -95,6 +98,7 @@ export const processStatementFile = async (
   company: CompanyProfile,
   fileData: { data: string; mimeType: string; fileName: string }
 ): Promise<Transaction[]> => {
+  // Always use process.env.API_KEY directly for initialization
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const isPDF = fileData.mimeType === 'application/pdf';
   const prompt = `Analise o extrato bancário (Arquivo: ${fileData.fileName}) da empresa ${company.name} (${company.industry || 'Geral'}). 

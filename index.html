@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <script>
+        /**
+         * Polyfill de DevOps: Deve ser o primeiro script a carregar.
+         * Define o objeto process global para o SDK do Gemini.
+         */
+        window.process = { 
+            env: { 
+                API_KEY: "" // Injetado via Define no Vite ou Ambiente Global
+            },
+            nextTick: function(fn) { setTimeout(fn, 0); }
+        };
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlowFin | BPO Financeiro com IA</title>
@@ -9,7 +21,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         
-        /* Previne flashes de layout */
         #root:empty {
             display: flex;
             align-items: center;
@@ -18,18 +29,6 @@
             background: #f8fafc;
         }
     </style>
-    <script>
-        /**
-         * Polyfill essencial para o SDK do Gemini e compatibilidade com process.env.
-         * Garante que o SDK consiga acessar a API_KEY em ambientes de produção.
-         */
-        window.process = { 
-            env: { 
-                API_KEY: "" // A chave é injetada automaticamente pelo Netlify no ambiente global
-            },
-            nextTick: function(fn) { setTimeout(fn, 0); }
-        };
-    </script>
     <script type="importmap">
 {
   "imports": {
@@ -40,23 +39,20 @@
     "recharts": "https://esm.sh/recharts@3.6.0",
     "lucide-react": "https://esm.sh/lucide-react@0.474.0",
     "react-dom/": "https://esm.sh/react-dom@19.0.0/",
-    "react/": "https://esm.sh/react@19.0.0/"
+    "react/": "https://esm.sh/react@19.0.0/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
 </head>
 <body class="bg-slate-50 text-slate-900">
     <div id="root">
-        <!-- Loader inicial informativo -->
         <div class="flex flex-col items-center">
             <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
             <p class="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Iniciando FlowFin...</p>
         </div>
     </div>
-    <!-- 
-      O loader esm.sh/run é a solução definitiva para o Netlify sem processo de build.
-      Ele transpila os scripts type="text/tsx" em tempo de execução no navegador.
-    -->
     <script type="module">
         import { run } from "https://esm.sh/run";
         run();
