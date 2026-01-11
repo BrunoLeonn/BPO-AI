@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, FileText, Upload, Settings, TrendingUp, ChevronRight, 
@@ -8,10 +7,10 @@ import {
   CreditCard, Search, ArrowDownUp, Filter, Printer, Download, AlertTriangle,
   Lock, LogOut, UserCircle, Mail, Key, User
 } from 'lucide-react';
-import { CompanyProfile, Transaction, CRMClient, AIAdvice, BankAccount, TransactionType } from './types';
-import { Dashboard } from './components/Dashboard';
-import { DRE, DFC } from './components/FinancialReports';
-import { processStatementFile, analyzeCNPJCard, generateAIStrategy } from './geminiService';
+import { CompanyProfile, Transaction, CRMClient, AIAdvice, BankAccount, TransactionType } from './types.ts';
+import { Dashboard } from './components/Dashboard.tsx';
+import { DRE, DFC } from './components/FinancialReports.tsx';
+import { processStatementFile, analyzeCNPJCard, generateAIStrategy } from './geminiService.ts';
 
 // Componente de Logo fiel à imagem enviada
 const FlowFinLogo = ({ className = "w-10 h-10" }: { className?: string }) => (
