@@ -70,7 +70,8 @@ export const generateAIStrategy = async (
     Seja crítico, profissional e direto.`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    // Using gemini-3-pro-preview for advanced financial reasoning and consultation
+    model: "gemini-3-pro-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -104,6 +105,7 @@ export const processStatementFile = async (
     Identifique o banco (ex: Santander, Mercado Pago, Itaú) a partir do conteúdo do extrato.
     Seja preciso com valores negativos (saídas) e positivos (entradas).`;
     
+  // Explicitly defining parts to avoid unnecessary 'any' where possible
   const parts: any[] = [{ text: prompt }];
 
   if (isPDF) {
@@ -114,7 +116,8 @@ export const processStatementFile = async (
   }
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    // Using gemini-3-pro-preview for high-accuracy document parsing and classification
+    model: "gemini-3-pro-preview",
     contents: { parts },
     config: {
       responseMimeType: "application/json",
@@ -127,7 +130,7 @@ export const processStatementFile = async (
             date: { type: Type.STRING, description: "Data no formato YYYY-MM-DD" },
             description: { type: Type.STRING },
             amount: { type: Type.NUMBER },
-            type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
+            type: { type: Type.STRING },
             category: { type: Type.STRING },
             subCategory: { type: Type.STRING },
             costCenter: { type: Type.STRING },

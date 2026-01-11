@@ -4,16 +4,14 @@ import {
   LayoutDashboard, FileText, Upload, Settings, TrendingUp, ChevronRight, 
   Loader2, Sparkles, Building2, FileCheck, AlertCircle, X, Trash2, 
   Users, ShieldCheck, HeartPulse, Landmark, ArrowUpRight,
-  FileSearch, CheckCircle, Clock, ListOrdered, Calendar, BarChart3,
-  CreditCard, Search, ArrowDownUp, Filter, Printer, Download, AlertTriangle,
-  Lock, LogOut, UserCircle, Mail, Key, User
+  CheckCircle, Clock, Calendar, BarChart3, CreditCard, Search, 
+  ArrowDownUp, Filter, Printer, Download, AlertTriangle, LogOut, Mail, Key, User
 } from 'lucide-react';
-import { CompanyProfile, Transaction, CRMClient, AIAdvice, BankAccount, TransactionType } from './types.ts';
-import { Dashboard } from './components/Dashboard.tsx';
-import { DRE, DFC } from './components/FinancialReports.tsx';
-import { processStatementFile, analyzeCNPJCard, generateAIStrategy } from './geminiService.ts';
+import { CompanyProfile, Transaction, CRMClient, AIAdvice, BankAccount, TransactionType } from './types';
+import { Dashboard } from './components/Dashboard';
+import { DRE, DFC } from './components/FinancialReports';
+import { processStatementFile, analyzeCNPJCard, generateAIStrategy } from './geminiService';
 
-// Componente de Logo
 const FlowFinLogo = ({ className = "w-10 h-10" }: { className?: string }) => (
   <div className={`relative flex items-center ${className}`}>
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
@@ -23,51 +21,27 @@ const FlowFinLogo = ({ className = "w-10 h-10" }: { className?: string }) => (
   </div>
 );
 
-const GoogleLogo = () => (
-  <svg width="20" height="20" viewBox="0 0 48 48" className="mr-3">
-    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
-    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-  </svg>
-);
-
-interface FileStatus {
-  name: string;
-  size: number;
-  status: 'waiting' | 'loading' | 'done' | 'error';
-  progress: number;
-  errorMessage?: string;
-}
-
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'cliente' | 'gestor' | null>(null);
-  const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'dre' | 'dfc' | 'upload' | 'setup' | 'crm' | 'strategy' | 'transactions' | 'banks' | 'full-report'>('setup');
 
   const [company, setCompany] = useState<CompanyProfile>(() => {
-    try {
-      const saved = localStorage.getItem('flowfin_company');
-      return saved ? JSON.parse(saved) : { name: '', cnpj: '', industry: '', fiscalYear: '2024' };
-    } catch (e) { return { name: '', cnpj: '', industry: '', fiscalYear: '2024' }; }
+    const saved = localStorage.getItem('flowfin_company');
+    return saved ? JSON.parse(saved) : { name: '', cnpj: '', industry: '', fiscalYear: '2024' };
   });
 
   const [crm, setCRM] = useState<CRMClient[]>(() => {
-    try {
-      const saved = localStorage.getItem('flowfin_crm');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) { return []; }
+    const saved = localStorage.getItem('flowfin_crm');
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      const saved = localStorage.getItem('flowfin_transactions');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) { return []; }
+    const saved = localStorage.getItem('flowfin_transactions');
+    return saved ? JSON.parse(saved) : [];
   });
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'dre' | 'dfc' | 'upload' | 'setup' | 'crm' | 'strategy' | 'transactions' | 'banks' | 'full-report'>('setup');
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [isProcessingCNPJ, setIsProcessingCNPJ] = useState(false);
   const [isProcessingStrategy, setIsProcessingStrategy] = useState(false);
@@ -75,7 +49,6 @@ const App: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const [aiAdvice, setAIAdvice] = useState<AIAdvice | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<FileStatus[]>([]);
   
   const cnpjInputRef = useRef<HTMLInputElement>(null);
   const statementInputRef = useRef<HTMLInputElement>(null);
@@ -102,31 +75,32 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserRole(null);
-    setAuthView('login');
     setSelectedClientId(null);
   };
 
   const handleCNPJUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setIsProcessingCNPJ(true);
-      const file = e.target.files[0];
+      // Fix: Cast explicitly to File to resolve TypeScript 'unknown' type and property errors
+      const file = e.target.files[0] as File;
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = async () => {
         const base64 = (reader.result as string).split(',')[1];
         try {
           const data = await analyzeCNPJCard({ data: base64, mimeType: file.type });
-          const updatedCompany = { ...company, ...data };
-          setCompany(updatedCompany as CompanyProfile);
+          const updated = { ...company, ...data };
+          setCompany(updated);
           if (data.cnpj) setSelectedClientId(data.cnpj);
           const newClient: CRMClient = {
             id: Math.random().toString(36).substr(2, 9),
-            ...updatedCompany,
+            ...updated,
             onboardingDate: new Date().toLocaleDateString(),
             fiscalYear: '2024'
-          } as CRMClient;
+          };
           setCRM(prev => [newClient, ...prev]);
-        } catch (err) { setErrorToast('Erro no processamento.'); }
+          setActiveTab('upload');
+        } catch (err) { setErrorToast('Erro ao processar CNPJ.'); }
         finally { setIsProcessingCNPJ(false); }
       };
     }
@@ -135,11 +109,11 @@ const App: React.FC = () => {
   const handleStatementUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0 && selectedClientId) {
       setIsProcessingStatements(true);
-      // Fix: Explicitly cast e.target.files to File[] using Array.from to avoid 'unknown' type issues in the for-loop
-      const newFiles = Array.from(e.target.files) as File[];
+      // Fix: Cast explicitly to File[] to resolve TypeScript 'unknown' type and property errors
+      const files = Array.from(e.target.files) as File[];
       const allNew: Transaction[] = [];
 
-      for (const file of newFiles) {
+      for (const file of files) {
         const reader = new FileReader();
         reader.readAsDataURL(file);
         await new Promise((resolve) => {
@@ -150,14 +124,48 @@ const App: React.FC = () => {
                 mimeType: file.type, fileName: file.name 
               });
               allNew.push(...res.map(t => ({ ...t, costCenter: selectedClientId })));
-            } catch (e) {}
+            } catch (err) { setErrorToast('Erro no processamento do arquivo.'); }
             resolve(true);
           };
         });
       }
-      setTransactions(prev => [...prev, ...allNew]);
+      
+      const updatedTransactions = [...transactions, ...allNew];
+      setTransactions(updatedTransactions);
+      
+      // Gerar contas bancárias baseadas nos bancos detectados
+      const banks = Array.from(new Set(allNew.map(t => t.bankName)));
+      const newAccounts = banks.map(b => ({
+        id: b,
+        bankName: b,
+        companyName: company.name,
+        currentBalance: allNew.filter(t => t.bankName === b).reduce((acc, t) => acc + (t.type === TransactionType.INCOME ? t.amount : -t.amount), 0),
+        lastUpdated: new Date().toLocaleDateString()
+      }));
+      setBankAccounts(newAccounts);
+      
       setIsProcessingStatements(false);
+      setActiveTab('dashboard');
     }
+  };
+
+  const generateStrategy = async () => {
+    if (filteredTransactions.length === 0) return;
+    setIsProcessingStrategy(true);
+    try {
+      const res = await generateAIStrategy(company, filteredTransactions);
+      setAIAdvice(res);
+      setActiveTab('strategy');
+    } catch (err) { setErrorToast('Erro ao gerar consultoria.'); }
+    finally { setIsProcessingStrategy(false); }
+  };
+
+  const handlePrint = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      window.print();
+      setIsExporting(false);
+    }, 500);
   };
 
   const NavItem = ({ id, icon: Icon, label, disabled = false }: { id: any, icon: any, label: string, disabled?: boolean }) => (
@@ -176,98 +184,202 @@ const App: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-inter">
-        <div className="mb-12 flex flex-col items-center">
-          <FlowFinLogo className="w-24 h-24 bg-white p-4 rounded-[2rem] shadow-2xl mb-6" />
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="mb-12 text-center">
+          <FlowFinLogo className="w-24 h-24 bg-white p-4 rounded-[2rem] shadow-2xl mx-auto mb-6" />
           <h1 className="text-4xl font-black text-slate-900 tracking-tighter">FLOWFIN</h1>
+          <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2">BPO Financeiro com IA</p>
         </div>
         <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
-           <button onClick={() => handleLogin('cliente')} className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-xl text-left">
-              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-8"><Building2 size={32} /></div>
-              <h2 className="text-3xl font-black text-slate-900">Cliente</h2>
-              <p className="text-slate-500 mt-2 font-medium">Acesse seus relatórios e fluxo.</p>
+           <button onClick={() => handleLogin('cliente')} className="bg-white p-12 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl transition-all text-left group">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-blue-600 group-hover:text-white transition-all"><Building2 size={32} /></div>
+              <h2 className="text-3xl font-black text-slate-900">Empresa Cliente</h2>
+              <p className="text-slate-500 mt-2 font-medium">Visualize seus relatórios e envie seus extratos bancários.</p>
            </button>
-           <button onClick={() => handleLogin('gestor')} className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-xl text-left">
-              <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mb-8"><ShieldCheck size={32} /></div>
-              <h2 className="text-3xl font-black text-slate-900">Gestor</h2>
-              <p className="text-slate-500 mt-2 font-medium">Gestão de carteira e CRM.</p>
+           <button onClick={() => handleLogin('gestor')} className="bg-white p-12 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl transition-all text-left group">
+              <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-emerald-500 group-hover:text-white transition-all"><ShieldCheck size={32} /></div>
+              <h2 className="text-3xl font-black text-slate-900">Gestor de BPO</h2>
+              <p className="text-slate-500 mt-2 font-medium">Gestão de carteira, CRM e consultoria estratégica IA.</p>
            </button>
         </div>
-        <p className="mt-12 text-slate-400 font-medium text-sm">Powered by <span className="text-blue-600 font-bold">Bruno Leonn</span></p>
       </div>
     );
   }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-inter">
+      <style>{`@media print { .no-print { display: none !important; } main { width: 100% !important; padding: 0 !important; } }`}</style>
+      
       <aside className="w-72 bg-white border-r border-slate-200 flex flex-col no-print">
         <div className="p-8">
           <div className="flex items-center space-x-3 mb-10">
             <FlowFinLogo className="w-10 h-10" />
             <span className="text-2xl font-black text-slate-900 tracking-tighter">FLOWFIN</span>
           </div>
-          <nav className="space-y-1.5">
+          <nav className="space-y-2">
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 mb-2">Visão Geral</div>
             <NavItem id="dashboard" icon={LayoutDashboard} label="Dashboard BI" disabled={filteredTransactions.length === 0} />
+            <NavItem id="strategy" icon={HeartPulse} label="Consultoria Flow" disabled={filteredTransactions.length === 0} />
+            <NavItem id="full-report" icon={FileCheck} label="Relatório Final" disabled={!aiAdvice} />
+            
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 mt-6 mb-2">Relatórios</div>
             <NavItem id="dre" icon={FileText} label="Relatório DRE" disabled={filteredTransactions.length === 0} />
+            <NavItem id="dfc" icon={TrendingUp} label="Fluxo de Caixa" disabled={filteredTransactions.length === 0} />
+            <NavItem id="transactions" icon={ArrowDownUp} label="Extrato Consolidado" disabled={filteredTransactions.length === 0} />
+            
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 mt-6 mb-2">Gestão</div>
             <NavItem id="upload" icon={Upload} label="Importar Dados" />
+            <NavItem id="banks" icon={Building2} label="Contas Bancárias" disabled={bankAccounts.length === 0} />
             {userRole === 'gestor' && <NavItem id="crm" icon={Users} label="Clientes CRM" />}
-            <NavItem id="setup" icon={Settings} label="Onboarding IA" />
+            <NavItem id="setup" icon={Settings} label="Configuração IA" />
           </nav>
         </div>
         <div className="mt-auto p-6 border-t border-slate-100">
-          <button onClick={handleLogout} className="flex items-center space-x-2 text-slate-400 hover:text-red-500 transition-colors">
-            <LogOut size={18} /> <span className="font-bold text-sm">Sair</span>
-          </button>
-          <p className="text-center text-[8px] font-black text-slate-400 uppercase tracking-widest mt-4">Powered by <span className="text-blue-600 font-bold">Bruno Leonn</span></p>
+           <div className="bg-slate-50 p-4 rounded-2xl mb-4">
+              <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Empresa Ativa</p>
+              <p className="text-sm font-bold truncate text-slate-800">{company.name || 'Nenhuma selecionada'}</p>
+           </div>
+           <button onClick={handleLogout} className="flex items-center space-x-2 text-slate-400 hover:text-red-500 transition-colors px-2">
+              <LogOut size={18} /> <span className="font-bold text-sm">Sair</span>
+           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto p-10">
+
+      <main className="flex-1 overflow-y-auto p-10 bg-slate-50">
         <div className="max-w-6xl mx-auto">
           {activeTab === 'setup' && (
-            <div className="bg-gradient-to-br from-blue-700 to-emerald-600 p-12 rounded-[3rem] text-white shadow-2xl">
-              <h2 className="text-5xl font-black mb-4 tracking-tighter">Onboarding Inteligente</h2>
-              <p className="text-blue-50 text-xl opacity-90">Suba o Cartão CNPJ para configurar a empresa.</p>
-              <button onClick={() => cnpjInputRef.current?.click()} className="mt-10 bg-white text-blue-900 px-10 py-5 rounded-2xl font-black shadow-2xl transition-all">
-                {isProcessingCNPJ ? 'Analisando...' : 'Upload CNPJ'}
-              </button>
-              <input type="file" ref={cnpjInputRef} className="hidden" onChange={handleCNPJUpload} />
+            <div className="bg-gradient-to-br from-blue-700 to-emerald-600 p-16 rounded-[3rem] text-white shadow-2xl animate-in fade-in duration-500">
+              <h2 className="text-5xl font-black mb-6 tracking-tighter">Onboarding Inteligente</h2>
+              <p className="text-blue-50 text-xl opacity-90 max-w-xl">Inicie o fluxo enviando o Cartão CNPJ do cliente. Nossa IA classificará tudo automaticamente.</p>
+              <div className="mt-12 flex space-x-4">
+                <button onClick={() => cnpjInputRef.current?.click()} className="bg-white text-blue-900 px-10 py-5 rounded-2xl font-black shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                  {isProcessingCNPJ ? <Loader2 className="animate-spin" /> : 'Upload Cartão CNPJ'}
+                </button>
+                <input type="file" ref={cnpjInputRef} className="hidden" onChange={handleCNPJUpload} />
+              </div>
             </div>
           )}
-          {activeTab === 'dashboard' && <Dashboard transactions={filteredTransactions} />}
-          {activeTab === 'dre' && <DRE transactions={filteredTransactions} />}
-          {activeTab === 'crm' && (
-             <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden">
-                <table className="w-full text-left">
-                   <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase">
-                      <tr><th className="px-8 py-6">Empresa</th><th className="px-8 py-6">CNPJ</th><th className="px-8 py-6 text-right">Ação</th></tr>
-                   </thead>
-                   <tbody>
-                      {crm.map(c => (
-                        <tr key={c.id} className="border-b">
-                           <td className="px-8 py-6 font-black uppercase">{c.name}</td>
-                           <td className="px-8 py-6 font-mono">{c.cnpj}</td>
-                           <td className="px-8 py-6 text-right">
-                              <button onClick={() => { setCompany(c); setSelectedClientId(c.cnpj); setActiveTab('dashboard'); }} className="text-blue-600 font-bold underline">Gerenciar</button>
-                           </td>
-                        </tr>
-                      ))}
-                   </tbody>
-                </table>
-             </div>
-          )}
+
           {activeTab === 'upload' && (
-            <div className="bg-white p-12 rounded-[3rem] border border-slate-200 text-center">
-               <h2 className="text-3xl font-black mb-6">Importação de Extratos</h2>
-               <div onClick={() => statementInputRef.current?.click()} className="border-4 border-dashed rounded-[3rem] p-20 cursor-pointer hover:bg-slate-50 transition-all">
-                  <Upload className="mx-auto mb-4 text-slate-300" size={48} />
-                  <p className="text-xl font-bold">Clique para selecionar arquivos</p>
+            <div className="bg-white p-16 rounded-[3rem] border border-slate-200 text-center animate-in fade-in">
+               <h2 className="text-4xl font-black text-slate-900 mb-4">Importação de Extratos</h2>
+               <p className="text-slate-400 font-bold mb-12">Arraste seus arquivos PDF ou OFX para conciliação automática.</p>
+               <div onClick={() => statementInputRef.current?.click()} className="border-4 border-dashed rounded-[3rem] p-24 cursor-pointer hover:bg-blue-50 hover:border-blue-500 transition-all group">
+                  <Upload className="mx-auto mb-6 text-slate-300 group-hover:text-blue-500 transition-colors" size={64} />
+                  <p className="text-2xl font-black text-slate-800">Clique para selecionar arquivos</p>
                   <input type="file" multiple ref={statementInputRef} className="hidden" onChange={handleStatementUpload} />
                </div>
-               {isProcessingStatements && <p className="mt-4 animate-pulse font-bold text-blue-600 text-sm">Processando transações via IA...</p>}
+               {isProcessingStatements && <div className="mt-10 flex flex-col items-center"><Loader2 className="animate-spin text-blue-600 mb-2" size={32} /> <p className="font-black text-blue-600 uppercase text-xs">IA analisando transações...</p></div>}
+               <button onClick={generateStrategy} disabled={filteredTransactions.length === 0} className="mt-12 bg-slate-900 text-white px-12 py-5 rounded-2xl font-black shadow-xl hover:bg-slate-800 disabled:opacity-30">
+                 Gerar Estratégia de Consultoria
+               </button>
+            </div>
+          )}
+
+          {activeTab === 'crm' && (
+            <div className="space-y-8 animate-in fade-in">
+              <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Gestão de Carteira</h2>
+              <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
+                    <tr><th className="px-8 py-6">Cliente</th><th className="px-8 py-6">CNPJ / CNAE</th><th className="px-8 py-6 text-right">Ação</th></tr>
+                  </thead>
+                  <tbody>
+                    {crm.map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50 border-b">
+                        <td className="px-8 py-8"><p className="font-black text-lg">{c.name}</p><p className="text-xs text-emerald-600 font-bold uppercase">{c.industry}</p></td>
+                        <td className="px-8 py-8 font-mono text-slate-500">{c.cnpj}</td>
+                        <td className="px-8 py-8 text-right">
+                          <button onClick={() => { setCompany(c); setSelectedClientId(c.cnpj); setActiveTab('dashboard'); }} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-100">Gerenciar</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'dashboard' && <Dashboard transactions={filteredTransactions} />}
+          {activeTab === 'dre' && <DRE transactions={filteredTransactions} />}
+          {activeTab === 'dfc' && <DFC transactions={filteredTransactions} />}
+          
+          {activeTab === 'strategy' && aiAdvice && (
+             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                   <div className="bg-white p-12 rounded-[3rem] shadow-sm border border-slate-100 text-center">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">Saúde Financeira</p>
+                      <div className="relative w-48 h-48 mx-auto flex items-center justify-center">
+                         <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+                            <circle cx="50" cy="50" r="45" stroke="#f1f5f9" strokeWidth="8" fill="transparent" />
+                            <circle cx="50" cy="50" r="45" stroke="#10B981" strokeWidth="8" fill="transparent" strokeDasharray="283" strokeDashoffset={283 - (283 * aiAdvice.healthScore) / 100} strokeLinecap="round" />
+                         </svg>
+                         <span className="absolute text-5xl font-black">{aiAdvice.healthScore}</span>
+                      </div>
+                   </div>
+                   <div className="lg:col-span-2 bg-white p-12 rounded-[3rem] shadow-sm border border-slate-100 flex flex-col justify-center">
+                      <h3 className="text-2xl font-black mb-6 flex items-center"><Sparkles className="text-blue-600 mr-2" /> Consultoria FlowFin</h3>
+                      <p className="text-slate-600 text-xl italic font-medium leading-relaxed border-l-8 border-blue-50 pl-8">"{aiAdvice.summary}"</p>
+                   </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="bg-emerald-50 p-10 rounded-[2.5rem]"><h4 className="font-black text-emerald-800 mb-6 uppercase text-xs">Pontos Fortes</h4><ul className="space-y-4">{aiAdvice.strengths.map((s,i) => <li key={i} className="flex items-start font-bold text-emerald-700"><CheckCircle size={18} className="mr-2 mt-1 shrink-0" /> {s}</li>)}</ul></div>
+                   <div className="bg-blue-50 p-10 rounded-[2.5rem]"><h4 className="font-black text-blue-800 mb-6 uppercase text-xs">Recomendações</h4><ul className="space-y-4">{aiAdvice.recommendations.map((r,i) => <li key={i} className="flex items-start font-bold text-blue-700"><ArrowUpRight size={18} className="mr-2 mt-1 shrink-0" /> {r}</li>)}</ul></div>
+                </div>
+             </div>
+          )}
+
+          {activeTab === 'full-report' && aiAdvice && (
+            <div className="animate-in fade-in">
+               <div className="flex items-center justify-between mb-10 no-print">
+                  <h2 className="text-3xl font-black">Relatório Estratégico Final</h2>
+                  <button onClick={handlePrint} className="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold flex items-center shadow-xl">
+                    <Printer size={20} className="mr-2" /> Imprimir / PDF
+                  </button>
+               </div>
+               <div className="bg-white p-20 rounded-[4rem] shadow-2xl border border-slate-100 print:shadow-none print:p-10">
+                  <div className="flex items-center justify-between mb-16">
+                     <div className="flex items-center space-x-3"><FlowFinLogo className="w-12 h-12" /><span className="text-3xl font-black">FLOWFIN</span></div>
+                     <div className="text-right"><p className="font-black text-xl uppercase">{company.name}</p><p className="text-slate-400 font-bold">Relatório Executivo {company.fiscalYear}</p></div>
+                  </div>
+                  <div className="border-t border-b border-slate-100 py-16 mb-16 text-center">
+                    <h1 className="text-6xl font-black tracking-tighter mb-4">Análise 360º de Performance</h1>
+                    <p className="text-slate-400 text-xl font-medium">Classificação automática via Inteligência Artificial Gemini 1.5</p>
+                  </div>
+                  <div className="space-y-20">
+                    <section>
+                       <h3 className="text-2xl font-black mb-8 underline">1. Diagnóstico de Saúde</h3>
+                       <p className="text-2xl font-medium leading-relaxed italic text-slate-700">{aiAdvice.summary}</p>
+                    </section>
+                    <section>
+                       <h3 className="text-2xl font-black mb-8 underline">2. Dashboards Financeiros</h3>
+                       <Dashboard transactions={filteredTransactions} />
+                    </section>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'banks' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in">
+              {bankAccounts.map(b => (
+                <div key={b.id} className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                  <div className="w-16 h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center mb-6"><Building2 size={28} /></div>
+                  <h3 className="text-2xl font-black">{b.bankName}</h3>
+                  <p className="text-slate-400 font-bold text-xs uppercase mb-8">{b.companyName}</p>
+                  <div className="pt-8 border-t border-slate-50"><p className="text-xs font-black text-slate-400 uppercase mb-2">Saldo Atual</p><p className="text-3xl font-black text-emerald-600">{b.currentBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </main>
+      
+      {errorToast && (
+        <div className="fixed bottom-10 right-10 bg-slate-900 text-white p-6 rounded-2xl shadow-2xl flex items-center space-x-4 animate-in slide-in-from-right-10">
+          <AlertCircle className="text-red-400" /> <span className="font-bold">{errorToast}</span> <button onClick={() => setErrorToast(null)}><X size={18} /></button>
+        </div>
+      )}
     </div>
   );
 };
