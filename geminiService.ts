@@ -2,11 +2,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { CompanyProfile, Transaction, AIAdvice } from "./types.ts";
 
+/**
+ * Função utilitária para capturar a chave de forma segura da ponte global
+ * definida no index.html (window.process.env).
+ */
+const getSafeApiKey = (): string => (window as any).process?.env?.API_KEY || '';
+
 export const analyzeCNPJCard = async (
   fileData: { data: string; mimeType: string }
 ): Promise<Partial<CompanyProfile>> => {
-  // Inicialização robusta com fallback para string vazia conforme solicitado
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  const genAI = new GoogleGenAI({ apiKey: getSafeApiKey() });
   const prompt = `Você é um assistente de onboarding de BPO. Analise o Cartão CNPJ anexo.
     Extraia os seguintes dados estruturados:
     - Razão Social (name)
@@ -18,7 +23,7 @@ export const analyzeCNPJCard = async (
     
     Retorne apenas o JSON.`;
 
-  const response = await ai.models.generateContent({
+  const response = await genAI.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: {
       parts: [
@@ -50,8 +55,7 @@ export const generateAIStrategy = async (
   company: CompanyProfile,
   transactions: Transaction[]
 ): Promise<AIAdvice> => {
-  // Inicialização robusta com fallback para string vazia
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  const genAI = new GoogleGenAI({ apiKey: getSafeApiKey() });
   const summaryData = transactions.slice(-50).map(t => ({
     desc: t.description,
     val: t.amount,
@@ -71,7 +75,7 @@ export const generateAIStrategy = async (
     
     Seja crítico, profissional e direto.`;
 
-  const response = await ai.models.generateContent({
+  const response = await genAI.models.generateContent({
     model: "gemini-3-pro-preview",
     contents: prompt,
     config: {
@@ -97,12 +101,10 @@ export const processStatementFile = async (
   company: CompanyProfile,
   fileData: { data: string; mimeType: string; fileName: string }
 ): Promise<Transaction[]> => {
-  // Inicialização robusta com fallback para string vazia
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  const genAI = new GoogleGenAI({ apiKey: getSafeApiKey() });
   const isPDF = fileData.mimeType === 'application/pdf';
   const prompt = `Analise o extrato bancário (Arquivo: ${fileData.fileName}) da empresa ${company.name} (${company.industry || 'Geral'}). 
     Extraia TODAS as transações e classifique-as no plano de contas.
-    IMPORTANTE: Atribua um percentual de confiança (0-100) for cada classificação baseada na descrição.
     A data deve estar obrigatoriamente no formato ISO YYYY-MM-DD.
     Identifique o banco (ex: Santander, Mercado Pago, Itaú) a partir do conteúdo do extrato.
     Seja preciso com valores negativos (saídas) e positivos (entradas).`;
@@ -116,7 +118,7 @@ export const processStatementFile = async (
     parts.push({ text: `Conteúdo do Arquivo: ${decodedText}` });
   }
 
-  const response = await ai.models.generateContent({
+  const response = await genAI.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: { parts },
     config: {
