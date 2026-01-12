@@ -10,8 +10,8 @@ interface DashboardProps {
   transactions: Transaction[];
 }
 
-// Cores FlowFin (Azul e Verde institucionais)
-const COLORS = ['#2563EB', '#10B981', '#3b82f6', '#059669', '#60a5fa', '#34d399'];
+// Cores Apolo Finance (Azul Marinho e Dourado Institucionais)
+const COLORS = ['#1A2B4C', '#C5A059', '#4A8C4A', '#2E4C7E', '#E2C288', '#67A667'];
 
 export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
   const summary = transactions.reduce((acc, t) => {
@@ -22,7 +22,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
 
   const profit = summary.revenue - summary.expenses;
 
-  // Processamento inteligente das categorias para o gráfico de pizza
   const rawCategoryData = transactions
     .filter(t => t.type === TransactionType.EXPENSE)
     .reduce((acc: any[], t) => {
@@ -35,7 +34,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
 
   const totalExpense = rawCategoryData.reduce((sum, item) => sum + item.value, 0);
 
-  // Agrupar categorias irrelevantes (< 5%) ou após as top 5 em "OUTROS"
   const categoryData = rawCategoryData.reduce((acc: any[], item, index) => {
     const percentage = (item.value / totalExpense) * 100;
     if (index < 5 && percentage >= 5) {
@@ -67,29 +65,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Fluxo de Entrada</p>
-          <p className="text-4xl font-black text-slate-900 tracking-tighter">
+        <div className="bg-white p-12 rounded-[3rem] shadow-sm border border-slate-100">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Receita Bruta</p>
+          <p className="text-4xl font-black text-[#1A2B4C] tracking-tighter">
             {summary.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Saídas Registradas</p>
-          <p className="text-4xl font-black text-blue-600 tracking-tighter">
+        <div className="bg-white p-12 rounded-[3rem] shadow-sm border border-slate-100">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Custos e Despesas</p>
+          <p className="text-4xl font-black text-[#C5A059] tracking-tighter">
             {summary.expenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 bg-gradient-to-br from-white to-emerald-50">
-          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Saldo Líquido Flow</p>
-          <p className={`text-4xl font-black tracking-tighter ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+        <div className="bg-white p-12 rounded-[3rem] shadow-sm border border-slate-100 bg-gradient-to-br from-white to-emerald-50/30">
+          <p className="text-[10px] font-black text-[#4A8C4A] uppercase tracking-widest mb-3">Resultado Operacional</p>
+          <p className={`text-4xl font-black tracking-tighter ${profit >= 0 ? 'text-[#4A8C4A]' : 'text-red-600'}`}>
             {profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
-          <h3 className="text-xl font-black mb-8 text-slate-900 uppercase tracking-widest text-[12px]">Performance Mensal Flow</h3>
+        <div className="bg-white p-12 rounded-[3rem] shadow-sm border border-slate-100">
+          <h3 className="text-xs font-black mb-10 text-slate-400 uppercase tracking-[0.2em]">Fluxo Temporal de Caixa</h3>
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={timelineData}>
@@ -97,19 +95,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
                 <Tooltip 
-                   contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontWeight: 'bold' }}
+                   contentStyle={{ borderRadius: '25px', border: 'none', boxShadow: '0 15px 45px rgba(26,43,76,0.1)', fontWeight: 'bold' }}
                    formatter={(value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }} />
-                <Bar dataKey="inflow" name="Entradas" fill="#2563EB" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="outflow" name="Saídas" fill="#10B981" radius={[8, 8, 0, 0]} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '30px', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }} />
+                <Bar dataKey="inflow" name="Entradas" fill="#1A2B4C" radius={[10, 10, 0, 0]} />
+                <Bar dataKey="outflow" name="Saídas" fill="#C5A059" radius={[10, 10, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
-          <h3 className="text-xl font-black mb-8 text-slate-900 uppercase tracking-widest text-[12px]">Mix de Categorias (Top 5)</h3>
+        <div className="bg-white p-12 rounded-[3rem] shadow-sm border border-slate-100">
+          <h3 className="text-xs font-black mb-10 text-slate-400 uppercase tracking-[0.2em]">Classificação de Gastos</h3>
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -119,8 +117,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
                   cy="50%"
                   innerRadius={70}
                   outerRadius={120}
-                  paddingAngle={8}
-                  minAngle={15}
+                  paddingAngle={10}
                   dataKey="value"
                   label={({ name, percent }) => (percent > 0.05 ? name : '')}
                 >
@@ -129,7 +126,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
                   ))}
                 </Pie>
                 <Tooltip 
-                  contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', fontWeight: 'bold' }}
+                  contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', fontWeight: 'bold' }}
                   formatter={(value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 />
                 <Legend 
@@ -137,7 +134,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
                   layout="horizontal" 
                   align="center" 
                   verticalAlign="bottom" 
-                  wrapperStyle={{ fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase', paddingTop: '20px' }} 
+                  wrapperStyle={{ fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase', paddingTop: '30px' }} 
                 />
               </PieChart>
             </ResponsiveContainer>

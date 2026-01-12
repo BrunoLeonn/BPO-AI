@@ -3,35 +3,38 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { CompanyProfile, Transaction, AIAdvice } from "./types.ts";
 
 /**
- * Função utilitária para capturar a chave de forma segura da ponte global
- * definida no index.html (window.process.env).
+ * Captura a chave exclusivamente do ambiente
  */
-const getSafeApiKey = (): string => (window as any).process?.env?.API_KEY || '';
+const API_KEY = process.env.API_KEY as string;
+
+/**
+ * Função utilitária para limpar o texto da resposta antes do parse JSON
+ */
+const cleanJsonResponse = (text: string) => {
+  // Remove blocos de código markdown (```json ... ```) se existirem
+  const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
+  return cleaned;
+};
 
 export const analyzeCNPJCard = async (
   fileData: { data: string; mimeType: string }
 ): Promise<Partial<CompanyProfile>> => {
-  const genAI = new GoogleGenAI({ apiKey: getSafeApiKey() });
-  const prompt = `Você é um assistente de onboarding de BPO. Analise o Cartão CNPJ anexo.
-    Extraia os seguintes dados estruturados:
-    - Razão Social (name)
-    - Nome Fantasia (tradingName)
-    - CNPJ
-    - Atividade Econômica Principal (CNAE e descrição)
-    - Endereço completo
-    - Data de Abertura
-    
-    Retorne apenas o JSON.`;
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  
+  const systemInstruction = `Você é um assistente de onboarding da APOLO FINANCE. 
+    Analise o Cartão CNPJ anexo.
+    Extraia Razão Social (name), Nome Fantasia (tradingName), CNPJ, Atividade (industry) e Endereço.
+    Retorne apenas o JSON puro, sem markdown.`;
 
-  const response = await genAI.models.generateContent({
+  const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: {
       parts: [
-        { text: prompt },
         { inlineData: { data: fileData.data, mimeType: fileData.mimeType } }
       ]
     },
     config: {
+      systemInstruction,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -40,23 +43,26 @@ export const analyzeCNPJCard = async (
           tradingName: { type: Type.STRING },
           cnpj: { type: Type.STRING },
           industry: { type: Type.STRING },
-          cnae: { type: Type.STRING },
-          address: { type: Type.STRING },
-          openingDate: { type: Type.STRING }
+          address: { type: Type.STRING }
         }
       }
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  try {
+    return JSON.parse(cleanJsonResponse(response.text || '{}'));
+  } catch(e) {
+    console.error("Erro no Parse JSON do CNPJ", e);
+    return {};
+  }
 };
 
 export const generateAIStrategy = async (
   company: CompanyProfile,
   transactions: Transaction[]
 ): Promise<AIAdvice> => {
-  const genAI = new GoogleGenAI({ apiKey: getSafeApiKey() });
-  const summaryData = transactions.slice(-50).map(t => ({
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const summaryData = transactions.slice(-100).map(t => ({
     desc: t.description,
     val: t.amount,
     type: t.type,
@@ -64,21 +70,14 @@ export const generateAIStrategy = async (
     date: t.date
   }));
 
-  const prompt = `Como consultor financeiro sênior especializado no ramo ${company.industry}, analise o perfil da empresa ${company.name} (CNPJ: ${company.cnpj}) e suas transações recentes: ${JSON.stringify(summaryData)}.
-    
-    Forneça:
-    1. Um Health Score de 0 a 100 baseado em liquidez e diversificação de gastos.
-    2. Um resumo executivo da saúde financeira.
-    3. Pontos fortes (ex: controle de custos, margem alta).
-    4. Pontos fracos (ex: dependência de poucos clientes, altas taxas bancárias).
-    5. Plano de ação com 3 a 5 recomendações práticas.
-    
-    Seja crítico, profissional e direto.`;
+  const systemInstruction = `Como consultor financeiro sênior da APOLO FINANCE, analise a empresa ${company.name} (${company.industry}).
+    Considere a saúde financeira e forneça um parecer iluminado e estratégico.`;
 
-  const response = await genAI.models.generateContent({
+  const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
-    contents: prompt,
+    contents: `Dados Financeiros: ${JSON.stringify(summaryData)}`,
     config: {
+      systemInstruction,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -94,34 +93,42 @@ export const generateAIStrategy = async (
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  try {
+    return JSON.parse(cleanJsonResponse(response.text || '{}'));
+  } catch(e) {
+    console.error("Erro no Parse da Estratégia", e);
+    throw new Error("Falha na inteligência estratégica.");
+  }
 };
 
 export const processStatementFile = async (
   company: CompanyProfile,
   fileData: { data: string; mimeType: string; fileName: string }
 ): Promise<Transaction[]> => {
-  const genAI = new GoogleGenAI({ apiKey: getSafeApiKey() });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   const isPDF = fileData.mimeType === 'application/pdf';
-  const prompt = `Analise o extrato bancário (Arquivo: ${fileData.fileName}) da empresa ${company.name} (${company.industry || 'Geral'}). 
-    Extraia TODAS as transações e classifique-as no plano de contas.
-    A data deve estar obrigatoriamente no formato ISO YYYY-MM-DD.
-    Identifique o banco (ex: Santander, Mercado Pago, Itaú) a partir do conteúdo do extrato.
-    Seja preciso com valores negativos (saídas) e positivos (entradas).`;
+  
+  const systemInstruction = `Analise o extrato bancário ${fileData.fileName} da empresa ${company.name}.
+    Extraia TODAS as transações (Data ISO, Descrição, Valor, Tipo INCOME/EXPENSE).
+    Classifique em categorias do plano de contas brasileiro.`;
     
-  const parts: any[] = [{ text: prompt }];
-
+  const parts: any[] = [];
   if (isPDF) {
     parts.push({ inlineData: { data: fileData.data, mimeType: fileData.mimeType } });
   } else {
-    const decodedText = atob(fileData.data);
-    parts.push({ text: `Conteúdo do Arquivo: ${decodedText}` });
+    try {
+      const decodedText = atob(fileData.data);
+      parts.push({ text: decodedText });
+    } catch(e) {
+      parts.push({ text: "Erro ao decodificar arquivo de texto." });
+    }
   }
 
-  const response = await genAI.models.generateContent({
+  const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: { parts },
     config: {
+      systemInstruction,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -129,21 +136,25 @@ export const processStatementFile = async (
           type: Type.OBJECT,
           properties: {
             id: { type: Type.STRING },
-            date: { type: Type.STRING, description: "Data no formato YYYY-MM-DD" },
+            date: { type: Type.STRING },
             description: { type: Type.STRING },
             amount: { type: Type.NUMBER },
             type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
             category: { type: Type.STRING },
             subCategory: { type: Type.STRING },
-            costCenter: { type: Type.STRING },
             bankName: { type: Type.STRING },
             confidence: { type: Type.NUMBER }
           },
-          required: ["id", "date", "description", "amount", "type", "category", "subCategory", "bankName", "confidence"]
+          required: ["id", "date", "description", "amount", "type", "category", "subCategory", "bankName"]
         }
       }
     }
   });
 
-  return JSON.parse(response.text || '[]');
+  try {
+    return JSON.parse(cleanJsonResponse(response.text || '[]'));
+  } catch(e) {
+    console.error("Erro no Parse do Extrato", e);
+    return [];
+  }
 };

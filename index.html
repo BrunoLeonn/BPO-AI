@@ -1,21 +1,20 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <script>
         /**
          * Polyfill de DevOps: Deve ser o primeiro script a carregar.
-         * Define o objeto process global para o SDK do Gemini.
+         * Define o objeto process global para o SDK do Gemini com fallback direto.
          */
-        window.process = { 
-            env: { 
-                API_KEY: "" // Injetado via Define no Vite ou Ambiente Global
-            },
-            nextTick: function(fn) { setTimeout(fn, 0); }
-        };
+        window.process = window.process || {};
+        window.process.env = window.process.env || {};
+        window.process.env.API_KEY = window.process.env.API_KEY || "AIzaSyD60oenJ3QRwERyTKvHFwaDDJthATqzDpk";
+        window.process.nextTick = function(fn) { setTimeout(fn, 0); };
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlowFin | BPO Financeiro com IA</title>
+    <title>Apolo Finance | BPO Financeiro com IA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -40,7 +39,7 @@
     "lucide-react": "https://esm.sh/lucide-react@0.474.0",
     "react-dom/": "https://esm.sh/react-dom@19.0.0/",
     "react/": "https://esm.sh/react@19.0.0/",
-    "vite": "https://esm.sh/vite@^7.3.1",
+    "vite": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
@@ -49,14 +48,10 @@
 <body class="bg-slate-50 text-slate-900">
     <div id="root">
         <div class="flex flex-col items-center">
-            <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p class="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Iniciando FlowFin...</p>
+            <div class="w-12 h-12 border-4 border-[#1A2B4C] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p class="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Iniciando Apolo Finance...</p>
         </div>
     </div>
-    <!-- 
-      O script 'run' do esm.sh deve ser carregado como src para processar scripts type="text/tsx" 
-      corretamente sem erros de named exports.
-    -->
     <script type="module" src="https://esm.sh/run"></script>
     <script type="text/tsx" src="index.tsx"></script>
 </body>
