@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, FileText, Upload, Settings, TrendingUp, ChevronRight, 
@@ -225,14 +226,15 @@ const App: React.FC = () => {
     return transactions.filter(t => t.costCenter === selectedClientId);
   }, [transactions, selectedClientId]);
 
+  // Fix: Corrected the logic to filter by costCenter (client ID) and correctly find unique bank names for the client
   const bankAccounts = useMemo(() => {
     if (!selectedClientId) return [];
-    const clientTransactions = transactions.filter(t => t.bankName === bank);
+    const clientTransactions = transactions.filter(t => t.costCenter === selectedClientId);
     const banksFound = Array.from(new Set(clientTransactions.map(t => t.bankName)));
-    return banksFound.map(bank => {
-      const bTrans = clientTransactions.filter(t => t.bankName === bank);
+    return banksFound.map(bankName => {
+      const bTrans = clientTransactions.filter(t => t.bankName === bankName);
       const balance = bTrans.reduce((acc, t) => acc + (t.type === TransactionType.INCOME ? t.amount : -Math.abs(t.amount)), 0);
-      return { id: bank, bankName: bank, currentBalance: balance, lastUpdated: new Date().toLocaleDateString() } as BankAccount;
+      return { id: bankName, bankName: bankName, currentBalance: balance, lastUpdated: new Date().toLocaleDateString() } as BankAccount;
     });
   }, [transactions, selectedClientId]);
 
